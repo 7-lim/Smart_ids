@@ -15,7 +15,6 @@ DATA_DIR      = PROJECT_ROOT / "data" / "cicids2017"
 RAW_DIR       = DATA_DIR / "raw"
 PROCESSED_DIR = DATA_DIR / "processed"
 FEATURES_DIR  = DATA_DIR / "features"
-BALANCED_DIR  = DATA_DIR / "balanced"
 
 MODELS_DIR    = PROJECT_ROOT / "models"
 
@@ -55,9 +54,19 @@ MLP_CONFIG = {
     "hidden_units":   [256, 128, 64],
     "dropout":        0.3,
     "learning_rate":  1e-3,
-    "batch_size":     1024,
-    "epochs":         50,
-    "patience":       7,
+    "batch_size":     2048,
+    "epochs":         60,
+    "patience":       8,
+    # Imbalance strategy. Options:
+    #   "class_weights" : sklearn balanced weights passed to model.fit
+    #   "focal"         : focal loss, no class weights
+    #   "none"          : vanilla cross-entropy (will collapse to BENIGN)
+    "imbalance_strategy": "class_weights",
+    # Focal-loss hyperparameters (only used when imbalance_strategy == "focal").
+    "focal_gamma":    2.0,
+    "focal_alpha":    0.25,
+    # Cap class-weights so the rarest classes don't dominate gradients.
+    "max_class_weight": 50.0,
 }
 
 AE_CONFIG = {
@@ -71,11 +80,6 @@ AE_CONFIG = {
     # reconstruction error on BENIGN traffic.
     "threshold_percentile": 99.0,
 }
-
-# Target per-class size after undersampling BENIGN before the GAN step.
-UNDERSAMPLE_BENIGN_TO = 120_000
-# Target size every minority class is grown to with CTGAN.
-GAN_TARGET_PER_CLASS  = 50_000
 
 # --------------------------------------------------------------------------- #
 # Inference / response policy

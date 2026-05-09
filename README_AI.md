@@ -13,29 +13,42 @@ smart_ids/
 ├── data/cicids2017/
 │   ├── raw/                   # original CICIDS2017 CSVs (you provide)
 │   ├── processed/             # train/val/test splits (built by notebook 01)
-│   ├── features/              # label_map.json, feature_names.json
-│   └── balanced/              # CTGAN-balanced training set (notebook 02)
-├── models/                    # trained artifacts (built by notebooks 03 & 04)
+│   └── features/              # label_map.json, feature_names.json
+├── models/                    # trained artifacts (built by notebooks 02 & 03)
 │   ├── scaler.joblib
 │   ├── mlp_model.keras
 │   ├── autoencoder_model.keras
 │   └── autoencoder_threshold.json
 ├── notebooks/
 │   ├── 01_eda_and_preprocessing.ipynb
-│   ├── 02_data_balancing_gan.ipynb
-│   ├── 03_mlp_training.ipynb
-│   ├── 04_autoencoder_training.ipynb
-│   └── 05_evaluation_and_comparison.ipynb
+│   ├── 02_mlp_training.ipynb
+│   ├── 03_autoencoder_training.ipynb
+│   └── 04_evaluation_and_comparison.ipynb
 ├── src/
 │   ├── config.py              # all paths, hyperparams, attack policy
 │   ├── preprocessing.py       # cleaning + feature alignment (shared with inference)
-│   ├── models.py              # Keras MLP & autoencoder builders
-│   ├── gan_balancer.py        # CTGAN oversampling
+│   ├── models.py              # Keras MLP, autoencoder, focal loss, class weights
 │   ├── evaluation.py          # plotting / metric helpers
 │   └── inference.py           # ★ SmartTIDS_Predictor — production entry point
 ├── requirements.txt
 └── README_AI.md
 ```
+
+### Imbalance handling — no resampling
+
+CICIDS2017 is severely imbalanced (BENIGN ≈ 80%). Rather than fabricate
+synthetic data with GANs or throw away samples with undersampling, we
+push the imbalance handling into the **loss function**:
+
+* **Default — class weights:** `compute_class_weight('balanced', ...)` is
+  passed to `model.fit(class_weight=...)`. Errors on rare classes are
+  scaled up proportionally, capped at `MLP_CONFIG["max_class_weight"]`.
+* **Alternative — focal loss:** flip
+  `MLP_CONFIG["imbalance_strategy"] = "focal"` in `src/config.py`. Focal
+  loss down-weights easy (BENIGN) examples automatically; no class
+  weights needed.
+
+The autoencoder is trained on **BENIGN only**, so balancing doesn't apply.
 
 ---
 
@@ -48,22 +61,20 @@ python -m venv ids_pfa
 pip install -r requirements.txt
 ```
 
-GPU optional. CTGAN (notebook 02 only) requires `pytorch`; install separately
-if you want to retrain: `pip install torch`.
+GPU optional but recommended for training. Inference is fast enough on CPU.
 
 ---
 
 ## 3. Training pipeline (run once)
 
 ```bash
-jupyter notebook notebooks/01_eda_and_preprocessing.ipynb   # cleans + splits
-jupyter notebook notebooks/02_data_balancing_gan.ipynb      # balances minorities
-jupyter notebook notebooks/03_mlp_training.ipynb            # trains MLP
-jupyter notebook notebooks/04_autoencoder_training.ipynb    # trains AE
-jupyter notebook notebooks/05_evaluation_and_comparison.ipynb
+jupyter notebook notebooks/01_eda_and_preprocessing.ipynb     # cleans + splits + scaler
+jupyter notebook notebooks/02_mlp_training.ipynb              # trains MLP (class-weighted)
+jupyter notebook notebooks/03_autoencoder_training.ipynb      # trains AE on BENIGN
+jupyter notebook notebooks/04_evaluation_and_comparison.ipynb # full eval, SHAP, latency
 ```
 
-After notebooks 01-04 the `models/` directory contains everything the inference
+After notebooks 01–03 the `models/` directory contains everything the inference
 module needs. Retraining is **not required** to use the API.
 
 ---
@@ -206,8 +217,8 @@ This makes the API tolerant to small schema drift in the upstream flow exporter.
 If new data arrives or you want to retune:
 
 1. Drop new CSVs into `data/cicids2017/raw/`.
-2. Re-run notebooks `01` and `02` (regenerates splits + balanced set + scaler).
-3. Re-run notebooks `03` and `04` (overwrites `models/*.keras`).
+2. Re-run notebook `01` (regenerates splits + scaler).
+3. Re-run notebooks `02` and `03` (overwrites `models/*.keras`).
 4. Bump `MODEL_VERSION` in `src/config.py`.
 
 The inference module needs no code changes — it always loads from
@@ -220,10 +231,10 @@ The inference module needs no code changes — it always loads from
 | Symptom | Likely cause |
 |---|---|
 | `FileNotFoundError: scaler.joblib` | Notebook 01 was not run |
-| `FileNotFoundError: mlp_model.keras` | Notebook 03 was not run |
-| AE warning "threshold file missing" | Notebook 04 was not run; predictor falls back to a permissive default |
+| `FileNotFoundError: mlp_model.keras` | Notebook 02 was not run |
+| AE warning "threshold file missing" | Notebook 03 was not run; predictor falls back to a permissive default |
 | "Array input has N features, expected 77" | Pass a `dict` instead, or align column order to `predictor.expected_features()` |
-| `ImportError: ctgan` | Only required for notebook 02 (training); not needed at inference |
+| MLP only ever predicts BENIGN | `imbalance_strategy` is set to `"none"` in `src/config.py` — switch to `"class_weights"` or `"focal"` |
 
 ---
 
