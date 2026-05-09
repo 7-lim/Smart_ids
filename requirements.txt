@@ -1,0 +1,26 @@
+# --- core data / ml ---
+numpy
+pandas
+scikit-learn
+joblib
+xgboost                 # legacy notebooks; safe to drop if not needed
+
+# --- deep learning ---
+tensorflow>=2.13        # MLP & autoencoder
+keras                   # bundled with TF, kept explicit
+
+# --- imbalance handling ---
+imbalanced-learn        # RandomUnderSampler, SMOTE family (legacy notebooks)
+ctgan                   # CTGAN-based oversampling for minority attacks
+
+# --- explainability ---
+shap
+
+# --- visualisation ---
+matplotlib
+seaborn
+plotly
+
+# --- notebooks ---
+jupyter
+ipykernel
