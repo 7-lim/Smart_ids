@@ -99,26 +99,35 @@ def build_mlp(
 # --------------------------------------------------------------------------- #
 def build_autoencoder(
     input_dim: int,
-    encoder_units: List[int] = (64, 32, 16),
-    latent_dim: int = 8,
-    learning_rate: float = 1e-3,
+    encoder_units: List[int] = (128, 64, 32),
+    latent_dim: int = 6,
+    learning_rate: float = 5e-4,
 ) -> tf.keras.Model:
     """
     Symmetric tabular autoencoder.
 
     Trained only on BENIGN traffic so reconstruction error spikes for any
     flow whose statistics deviate from normal — useful as a zero-day net.
+
+    Each Dense layer is followed by BatchNorm + LeakyReLU; LeakyReLU avoids
+    the "dying ReLU" problem common with the sparse, heavy-tailed numeric
+    features in CICIDS. The latent layer has linear activation so the
+    bottleneck can represent both positive and negative deviations.
     """
     inputs = layers.Input(shape=(input_dim,), name="features")
 
     x = inputs
     for i, units in enumerate(encoder_units):
-        x = layers.Dense(units, activation="relu", name=f"enc_{i}")(x)
-    latent = layers.Dense(latent_dim, activation="relu", name="latent")(x)
+        x = layers.Dense(units, name=f"enc_dense_{i}")(x)
+        x = layers.BatchNormalization(name=f"enc_bn_{i}")(x)
+        x = layers.LeakyReLU(negative_slope=0.1, name=f"enc_act_{i}")(x)
+    latent = layers.Dense(latent_dim, activation="linear", name="latent")(x)
 
     x = latent
     for i, units in enumerate(reversed(encoder_units)):
-        x = layers.Dense(units, activation="relu", name=f"dec_{i}")(x)
+        x = layers.Dense(units, name=f"dec_dense_{i}")(x)
+        x = layers.BatchNormalization(name=f"dec_bn_{i}")(x)
+        x = layers.LeakyReLU(negative_slope=0.1, name=f"dec_act_{i}")(x)
     outputs = layers.Dense(input_dim, activation="linear", name="reconstruction")(x)
 
     model = models.Model(inputs, outputs, name="smarttids_autoencoder")

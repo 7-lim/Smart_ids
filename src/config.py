@@ -72,15 +72,20 @@ MLP_CONFIG = {
 }
 
 AE_CONFIG = {
-    "encoder_units":  [64, 32, 16],
-    "latent_dim":     8,
-    "learning_rate":  1e-3,
+    "encoder_units":  [128, 64, 32],
+    "latent_dim":     6,
+    "learning_rate":  5e-4,
     "batch_size":     512,
     "epochs":         50,
-    "patience":       7,
-    # Threshold is derived from the 99th-percentile of validation
-    # reconstruction error on BENIGN traffic.
-    "threshold_percentile": 99.0,
+    "patience":       10,
+    # Default percentile used when starting threshold; the notebook then
+    # sweeps over [90, 95, 97, 99, 99.5, 99.9] and picks the best F1.
+    "threshold_percentile": 95.0,
+    # Cap (in standard-deviations of the scaled features) used during
+    # AE training to drop benign outliers that otherwise dominate MSE
+    # and prevent the AE from learning the bulk of typical traffic.
+    # Inference does NOT clip: extreme values then become anomaly signals.
+    "outlier_clip_z": 5.0,
 }
 
 # --------------------------------------------------------------------------- #
