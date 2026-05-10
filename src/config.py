@@ -35,11 +35,14 @@ COLS_TO_DROP = [
     "Source Port", "Destination Port", "Fwd Header Length.1",
 ]
 
-# Classes with too few samples to learn (and that destabilise GAN training).
+# Classes with too few samples to learn.
+# Note: the SQL Injection label as it appears in the raw CSV uses a latin-1
+# 0x96 byte (an "en dash") between "Web Attack" and "Sql Injection". We
+# match that byte exactly so the drop filter actually fires at preprocessing.
 RARE_CLASSES_TO_DROP = [
     "Heartbleed",
     "Infiltration",
-    "Web Attack \x96 Sql Injection",  # CICIDS uses the latin1 \x96 dash
+    "Web Attack \x96 Sql Injection",
 ]
 
 LABEL_COL   = "Label"
@@ -104,8 +107,8 @@ ATTACK_POLICY = {
     "FTP-Patator":               ("MEDIUM",   "BLOCK_SOURCE_IP"),
     "SSH-Patator":               ("MEDIUM",   "BLOCK_SOURCE_IP"),
     "PortScan":                  ("MEDIUM",   "ALERT_AND_MONITOR"),
-    "Web Attack \x96 Brute Force": ("MEDIUM", "BLOCK_SOURCE_IP"),
-    "Web Attack \x96 XSS":         ("HIGH",   "BLOCK_AND_INVESTIGATE"),
+    "Web Attack - Brute Force":  ("MEDIUM", "BLOCK_SOURCE_IP"),
+    "Web Attack - XSS":          ("HIGH",   "BLOCK_AND_INVESTIGATE"),
 }
 DEFAULT_POLICY = ("UNKNOWN", "ALERT_AND_MONITOR")
 

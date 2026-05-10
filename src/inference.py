@@ -194,6 +194,8 @@ class SmartTIDS_Predictor:
     ) -> List[Dict[str, Any]]:
         """Predict a batch of flows. Returns a list of result dicts."""
         df = self._coerce_to_df(flows)
+        if len(df) == 0:
+            return []
         X = self._scale(df)
 
         t0 = time.perf_counter()
