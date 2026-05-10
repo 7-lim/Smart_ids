@@ -20,3 +20,14 @@ plotly
 # --- notebooks ---
 jupyter
 ipykernel
+
+# --- service layer ---
+fastapi>=0.110
+uvicorn[standard]>=0.27
+pydantic>=2.0
+
+# --- pcap ingestion ---
+scapy>=2.5
+
+# --- testing ---
+pytest>=8.0
