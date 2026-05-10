@@ -51,12 +51,12 @@ ENCODED_COL = "label_encoded"
 RANDOM_STATE = 42
 
 MLP_CONFIG = {
-    "hidden_units":   [256, 128, 64],
+    "hidden_units":   [512, 256, 128],
     "dropout":        0.3,
     "learning_rate":  1e-3,
     "batch_size":     2048,
     "epochs":         60,
-    "patience":       8,
+    "patience":       12,
     # Imbalance strategy. Options:
     #   "class_weights" : sklearn balanced weights passed to model.fit
     #   "focal"         : focal loss, no class weights
@@ -66,7 +66,9 @@ MLP_CONFIG = {
     "focal_gamma":    2.0,
     "focal_alpha":    0.25,
     # Cap class-weights so the rarest classes don't dominate gradients.
-    "max_class_weight": 50.0,
+    # 10 is a good middle ground: rare classes still get ~100x more importance
+    # than BENIGN, but not so much that the model over-predicts them.
+    "max_class_weight": 10.0,
 }
 
 AE_CONFIG = {
