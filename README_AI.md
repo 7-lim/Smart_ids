@@ -292,6 +292,29 @@ If new data arrives or you want to retune:
 The inference / API / extractor layers need **no code change** — they
 always load from `models/` at startup.
 
+### ⚠ Re-training gotcha — Web Attack label encoding
+
+The `data/cicids2017/features/label_map.json` shipped with this repo uses
+clean ASCII names: `Web Attack - XSS`, `Web Attack - Brute Force`. The
+**raw CICIDS2017 CSVs** instead contain a latin-1 `\x96` byte between
+"Web Attack" and the attack name — a Windows en-dash that renders as
+garbage (`Â–`) in JSON.
+
+If you re-run **notebook 01**, sklearn's `LabelEncoder` will rebuild
+`label_map.json` from the raw CSV strings — **the latin-1 bytes will
+come back**. Two ways to handle it:
+
+* **Easy:** after re-running notebook 01, manually edit
+  `data/cicids2017/features/label_map.json` and the matching keys in
+  `src/config.py:ATTACK_POLICY` to swap `\x96` for `-`. (10-second fix.)
+* **Better:** add a one-liner in notebook 01 right before
+  `LabelEncoder.fit` that does `data[LABEL_COL] = data[LABEL_COL].str.replace('\x96', '-')`,
+  and the same thing in notebooks 02/03/04 right after reading the CSVs.
+  Then everything stays clean across re-runs.
+
+The currently-saved models are unaffected by this — they classify by
+integer class ID, not by string. The names are display-only.
+
 ---
 
 ## 10. Honest caveats (what to flag in the SOC handover)
