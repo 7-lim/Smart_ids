@@ -99,6 +99,10 @@ After 02 + 03 complete, the `models/` directory has everything inference
 needs. Imbalance is handled in the **loss function** (sklearn-balanced
 class weights, capped) — no GAN, no resampling.
 
+> **Note for the cyber team:** the trained `models/` directory (~3 MB) is
+> shipped with the repo, so you can skip the training notebooks entirely
+> and use the predictor / API immediately after `pip install`.
+
 ---
 
 ## 5. Three ways to call the AI module
