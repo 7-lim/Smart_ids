@@ -52,14 +52,12 @@ smart_ids/
 │   └── 04_evaluation_and_comparison.ipynb
 ├── src/
 │   ├── config.py                  # paths, hyperparams, attack policy
-│   ├── preprocessing.py           # cleaning + feature alignment
-│   ├── models.py                  # Keras MLP, autoencoder, focal loss, class weights
-│   ├── evaluation.py              # plotting / metric helpers
+│   ├── preprocessing.py           # cleaning + label normalisation + feature alignment
 │   ├── inference.py               # ★ SmartTIDS_Predictor — Python entry point
 │   ├── api.py                     # ★ FastAPI service (REST entry point)
 │   └── flow_extractor.py          # ★ pcap -> 77-feature dicts
 ├── tests/
-│   └── test_inference.py
+│   └── test_inference.py          # 14 unit tests
 ├── requirements.txt
 └── README_AI.md
 ```
@@ -97,7 +95,10 @@ jupyter notebook notebooks/04_evaluation_and_comparison.ipynb # eval, SHAP, late
 
 After 02 + 03 complete, the `models/` directory has everything inference
 needs. Imbalance is handled in the **loss function** (sklearn-balanced
-class weights, capped) — no GAN, no resampling.
+class weights, capped at 10x) — no GAN, no resampling. Notebooks 02
+and 03 also include a **hyperparameter search** (random search +
+3-fold stratified CV on a subsample) whose best configurations are
+persisted as `models/mlp_best_params.json` and `models/ae_best_params.json`.
 
 > **Note for the cyber team:** the trained `models/` directory (~3 MB) is
 > shipped with the repo, so you can skip the training notebooks entirely
@@ -256,16 +257,17 @@ Every prediction returns the same JSON shape:
 
 ## 7. Performance
 
-Measured on a laptop CPU (no GPU):
+Measured on a laptop CPU (no GPU), test set = 424,172 held-out flows:
 
-| Metric                       | Value           |
-| ---------------------------- | --------------- |
-| Single-flow latency (p50)    | ~4 ms           |
-| Batch throughput             | ~6,000 flows/s  |
-| MLP weighted-F1 (test set)   | ~0.98           |
-| MLP macro-F1 (test set)      | ~0.73           |
-| AE ROC-AUC                   | ~0.83           |
-| AE recall on DoS variants    | 60 – 95 %       |
+| Metric                                | Value             |
+| ------------------------------------- | ----------------- |
+| Single-flow latency (mean)            | ~0.56 ms          |
+| Batch throughput                      | ~1,800 flows/s    |
+| MLP weighted-F1 (test set)            | ~0.98             |
+| MLP macro-F1 (test set)               | 0.7506            |
+| AE ROC-AUC (binary attack/benign)     | 0.8453            |
+| Hybrid binary recall (attack found)   | 0.9996            |
+| AE recall on DoS variants             | 60 – 95 %         |
 
 Numbers are reproducible by running notebook 04.
 
@@ -296,28 +298,17 @@ If new data arrives or you want to retune:
 The inference / API / extractor layers need **no code change** — they
 always load from `models/` at startup.
 
-### ⚠ Re-training gotcha — Web Attack label encoding
+### Web Attack label normalisation (already handled)
 
-The `data/cicids2017/features/label_map.json` shipped with this repo uses
-clean ASCII names: `Web Attack - XSS`, `Web Attack - Brute Force`. The
-**raw CICIDS2017 CSVs** instead contain a latin-1 `\x96` byte between
-"Web Attack" and the attack name — a Windows en-dash that renders as
-garbage (`Â–`) in JSON.
+The raw CICIDS2017 CSVs contain a latin-1 `\x96` byte between
+"Web Attack" and the attack name (e.g. `Web Attack \x96 Brute Force`),
+which renders as garbage in JSON. This is now handled automatically by
+`src.preprocessing.normalize_labels()` — called both in notebook 01
+and inside the production preprocessing path — so labels are always
+the clean form `Web Attack - Brute Force` / `Web Attack - XSS`. The
+keys in `src/config.py:ATTACK_POLICY` match that clean form.
 
-If you re-run **notebook 01**, sklearn's `LabelEncoder` will rebuild
-`label_map.json` from the raw CSV strings — **the latin-1 bytes will
-come back**. Two ways to handle it:
-
-* **Easy:** after re-running notebook 01, manually edit
-  `data/cicids2017/features/label_map.json` and the matching keys in
-  `src/config.py:ATTACK_POLICY` to swap `\x96` for `-`. (10-second fix.)
-* **Better:** add a one-liner in notebook 01 right before
-  `LabelEncoder.fit` that does `data[LABEL_COL] = data[LABEL_COL].str.replace('\x96', '-')`,
-  and the same thing in notebooks 02/03/04 right after reading the CSVs.
-  Then everything stays clean across re-runs.
-
-The currently-saved models are unaffected by this — they classify by
-integer class ID, not by string. The names are display-only.
+No manual fix needed when re-training.
 
 ---
 

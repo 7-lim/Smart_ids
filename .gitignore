@@ -39,3 +39,13 @@ Thumbs.db
 
 # --- Notebook output noise ---
 *.nbconvert.ipynb
+
+# --- Report deliverable (not part of the codebase) ---
+# Generated LaTeX report and its image folder are delivered separately
+# (Overleaf project / academic submission), not tracked in the repo.
+rapport.txt
+img/
+
+# --- One-shot helper scripts (must never be committed) ---
+_fix_*.py
+_extract_*.py

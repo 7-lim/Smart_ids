@@ -79,6 +79,30 @@ def drop_rare_classes(df: pd.DataFrame) -> pd.DataFrame:
     return df.loc[mask].reset_index(drop=True)
 
 
+def normalize_labels(df: pd.DataFrame) -> pd.DataFrame:
+    """Clean up the "Web Attack" labels.
+
+    The raw CICIDS2017 CSVs use a latin-1 0x96 byte (an en-dash) between
+    "Web Attack" and the subtype, producing labels like
+    ``"Web Attack \\x96 Brute Force"``. Replace the stray byte with " - "
+    and collapse any double whitespace, so labels become
+    ``"Web Attack - Brute Force"`` / ``"Web Attack - XSS"`` — the format
+    `cfg.ATTACK_POLICY` expects at inference time.
+
+    Idempotent: safe to call on already-clean frames.
+    """
+    if cfg.LABEL_COL not in df.columns:
+        return df
+    df = df.copy()
+    df[cfg.LABEL_COL] = (
+        df[cfg.LABEL_COL].astype(str)
+        .str.replace("\x96", "-", regex=False)
+        .str.replace(r"\s+", " ", regex=True)
+        .str.strip()
+    )
+    return df
+
+
 # --------------------------------------------------------------------------- #
 # Feature alignment (the inference contract)
 # --------------------------------------------------------------------------- #

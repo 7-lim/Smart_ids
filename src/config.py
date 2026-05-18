@@ -107,8 +107,11 @@ ATTACK_POLICY = {
     "FTP-Patator":               ("MEDIUM",   "BLOCK_SOURCE_IP"),
     "SSH-Patator":               ("MEDIUM",   "BLOCK_SOURCE_IP"),
     "PortScan":                  ("MEDIUM",   "ALERT_AND_MONITOR"),
-    "Web Attack - Brute Force":  ("MEDIUM", "BLOCK_SOURCE_IP"),
-    "Web Attack - XSS":          ("HIGH",   "BLOCK_AND_INVESTIGATE"),
+    "Web Attack - Brute Force":  ("MEDIUM",   "BLOCK_SOURCE_IP"),
+    "Web Attack - XSS":          ("HIGH",     "BLOCK_AND_INVESTIGATE"),
+    # AE flagged a flow the MLP could not classify as a known attack.
+    # Treat as HIGH severity (likely zero-day) and route to investigation.
+    "UNKNOWN_ANOMALY":            ("HIGH",     "ALERT_AND_INVESTIGATE"),
 }
 DEFAULT_POLICY = ("UNKNOWN", "ALERT_AND_MONITOR")
 
